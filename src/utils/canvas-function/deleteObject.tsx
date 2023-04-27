@@ -1,10 +1,14 @@
-import {Transform} from "fabric/fabric-impl";
+import { Transform } from "fabric/fabric-impl";
 
-function deleteObject(eventData:MouseEvent, transform:Transform):boolean {
-    const target = transform.target;
-    const canvas = target.canvas;
+function deleteObject(transform: Transform): boolean {
+  const target = transform.target;
+  const canvas = target.canvas;
+
+  if (canvas) {
     canvas.remove(target);
     canvas.requestRenderAll();
-return true
+  }
+
+  return true;
 }
-export default deleteObject
+export default deleteObject;
