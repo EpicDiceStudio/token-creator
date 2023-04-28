@@ -1,8 +1,0 @@
-{
-    "globalHeaders": {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, OPTIONS",
-      "Referrer-Policy":"strict-origin-when-cross-origin",
-      "cross-origin-resource-policy":"cross-origin"
-    }
-}
