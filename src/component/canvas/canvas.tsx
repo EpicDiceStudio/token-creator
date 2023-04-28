@@ -5,9 +5,9 @@ import { FileUploader } from "react-drag-drop-files";
 import fileTypes from "../../utils/filetype/filetype";
 
 export const Canvas = (props: any) => {
-  const file: any = props.file;
-  const setFile: any = props.setFile;
+  const [file, setFile] = useState(null);
   const [canvas, setCanvas] = useState<fabric.Canvas | null>(null);
+  const [canvas2, setCanvas2] = useState<fabric.Canvas | null>(null);
   const [imageExists, setImageExists] = useState(false);
 
   fabric.Object.prototype.cornerStyle = "circle";
@@ -38,7 +38,7 @@ export const Canvas = (props: any) => {
         canvas2.clear();
         canvas2.add(...canvas.getObjects().map((o) => o));
         canvas2.renderAll();
-        console.log(canvas2.getActiveObjects());
+        setCanvas2(canvas2);
       });
     }
   }, []);
@@ -49,26 +49,29 @@ export const Canvas = (props: any) => {
         alert("Une image est déjà présente sur le canvas.");
         return;
       }
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (reader.result && canvas) {
-          fabric.Image.fromURL(
-            reader.result.toString(),
-            (oImg: fabric.Image) => {
-              oImg.scaleToWidth(300);
-              canvas.add(oImg);
-              oImg.center();
-              setImageExists(true);
-            }
-          );
-        }
-      };
-      reader.readAsDataURL(file);
     }
   }, [file]);
 
+  function handleChange(file: any): void {
+    // setFile(file);
+    const fileReader = new FileReader();
+    fileReader.onload = () => {
+      if (fileReader.result && canvas) {
+        fabric.Image.fromURL(
+          fileReader.result.toString(),
+          (oImg: fabric.Image) => {
+            oImg.scaleToWidth(300);
+            canvas.add(oImg);
+            oImg.center();
+            setImageExists(true);
+          }
+        );
+      }
+    };
+    fileReader.readAsDataURL(file);
+  }
   //partie Bordure
-  function handleChangeBorder(files: any): void {
+  function handleChangeBorder(file: any): void {
     const borderReader = new FileReader();
     borderReader.onload = () => {
       if (borderReader.result && canvas) {
@@ -97,12 +100,16 @@ export const Canvas = (props: any) => {
         );
       }
     };
-    borderReader.readAsDataURL(files);
+    borderReader.readAsDataURL(file);
   }
   //clip circle
   function AddCircleClip() {
-    const clipPath = new fabric.Circle({ radius: 99, opacity: 0.01 });
-    if (canvas) {
+    const clipPath = new fabric.Circle({ radius: 98, opacity: 0.01 });
+    if (canvas2) {
+      clipPath.center();
+      clipPath.lockMovementX = true;
+      clipPath.lockMovementY = true;
+      canvas2.add(clipPath);
       clipPath.setControlsVisibility({
         bl: false,
         br: false,
@@ -114,9 +121,11 @@ export const Canvas = (props: any) => {
         mt: false,
         mtr: false,
       });
-      canvas.clipPath = clipPath;
-      clipPath.center();
-      canvas.add(clipPath);
+      if (canvas2.width && canvas2.height) {
+        clipPath.left = canvas2.width / 2 - 98;
+        clipPath.top = canvas2.height / 2 - 98;
+      }
+      canvas2.clipPath = clipPath;
     }
   }
   function cleanArea() {
@@ -135,6 +144,18 @@ export const Canvas = (props: any) => {
   return (
     <>
       <section className={"FileSection"}>
+        <FileUploader
+          multiple={false}
+          handleChange={handleChange}
+          name={"file"}
+          types={fileTypes}
+          children={
+            <div className={"dragAndDropArea"}>
+              <p>Drag or drop you're file</p>
+              <p>File must have JPEG,PNG,GIF,PNG,MP4,AVI,WEBM,AVIF extension</p>
+            </div>
+          }
+        />
         <FileUploader
           multiple={false}
           handleChange={handleChangeBorder}
