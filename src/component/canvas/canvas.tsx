@@ -3,8 +3,19 @@ import "./canvas.scss";
 import { useEffect, useState } from "react";
 import { FileUploader } from "react-drag-drop-files";
 import fileTypes from "../../utils/filetype/filetype";
+import frameApiService from "../../utils/service/frameApiService";
+import {
+  AddRequestMessage,
+  EntityType,
+  FrameMessage,
+  FrameMessageType,
+  LoadRequestMessage,
+  ModalType,
+  PlugInContext,
+  RequestMessageType,
+} from "@epic-dice-studio/dice-stories-plug-ins-api";
 
-export const Canvas = (props: any) => {
+export const Canvas = () => {
   const [file, setFile] = useState(null);
   const [canvas, setCanvas] = useState<fabric.Canvas | null>(null);
   const [canvas2, setCanvas2] = useState<fabric.Canvas | null>(null);
@@ -40,8 +51,57 @@ export const Canvas = (props: any) => {
         canvas2.renderAll();
         setCanvas2(canvas2);
       });
+      frameApiService.messageReceived$.subscribe((message) => {
+        onMessageReceived(message);
+      });
     }
   }, []);
+
+  function onMessageReceived(message: FrameMessage<any>) {
+
+    switch (message.type) {
+      case FrameMessageType.CONTEXT:
+        const context = message.data as PlugInContext
+        const medium = context.data as { url: string }
+        break;
+      case FrameMessageType.CLOSE:
+        const url = message?.data?.url;
+        if (url) {
+          fabric.Image.fromURL(url, (oImg: fabric.Image) => {
+            oImg.scaleToWidth(300);
+            if (canvas) {
+              canvas.add(oImg);
+              oImg.center();
+              setImageExists(true);
+            }
+          });
+        }
+        break;
+
+      case FrameMessageType.REQUEST:
+        const request = message as FrameMessage<AddRequestMessage<any>>;
+        if (request?.data?.type === RequestMessageType.ADD && request.data.entityType === EntityType.MEDIA) {
+
+          const filters = new Map<string, any>()
+          filters.set('id', request.data.data)
+          frameApiService.sendMessage({
+            type: FrameMessageType.REQUEST,
+            data: {
+              entityType: EntityType.MEDIUM,
+              type: RequestMessageType.LOAD,
+              filters
+            } as LoadRequestMessage
+          })
+        }
+        if ((request?.data?.type === RequestMessageType.LOAD && request.data.entityType === EntityType.MEDIUM)) {
+          frameApiService.sendMessage({
+            type: FrameMessageType.CLOSE,
+            data: request.data.data,
+          })
+        }
+        break;
+    }
+  }
 
   useEffect(() => {
     if (file) {
@@ -52,56 +112,55 @@ export const Canvas = (props: any) => {
     }
   }, [file]);
 
-  function handleChange(file: any): void {
-    // setFile(file);
-    const fileReader = new FileReader();
-    fileReader.onload = () => {
-      if (fileReader.result && canvas) {
-        fabric.Image.fromURL(
-          fileReader.result.toString(),
-          (oImg: fabric.Image) => {
-            oImg.scaleToWidth(300);
-            canvas.add(oImg);
-            oImg.center();
-            setImageExists(true);
-          }
-        );
-      }
-    };
-    fileReader.readAsDataURL(file);
-  }
-  //partie Bordure
-  function handleChangeBorder(file: any): void {
-    const borderReader = new FileReader();
-    borderReader.onload = () => {
-      if (borderReader.result && canvas) {
-        fabric.Image.fromURL(
-          borderReader.result.toString(),
-          (currentBorder: fabric.Image) => {
-            currentBorder.scaleToWidth(200);
-            currentBorder.setControlsVisibility({
-              bl: false,
-              br: false,
-              tl: false,
-              tr: false,
-              mb: false,
-              ml: false,
-              mr: false,
-              mt: false,
-              mtr: true,
-            });
-            canvas.add(currentBorder);
-            currentBorder.lockMovementX = true;
-            currentBorder.lockMovementY = true;
+  // function handleChange(file: any): void {
+  //   const fileReader = new FileReader();
+  //   fileReader.onload = () => {
+  //     if (fileReader.result && canvas) {
+  //       fabric.Image.fromURL(
+  //         fileReader.result.toString(),
+  //         (oImg: fabric.Image) => {
+  //           oImg.scaleToWidth(300);
+  //           canvas.add(oImg);
+  //           oImg.center();
+  //           setImageExists(true);
+  //         }
+  //       );
+  //     }
+  //   };
+  //   fileReader.readAsDataURL(file);
+  // }
+  // //partie Bordure
+  // function handleChangeBorder(file: any): void {
+  //   const borderReader = new FileReader();
+  //   borderReader.onload = () => {
+  //     if (borderReader.result && canvas) {
+  //       fabric.Image.fromURL(
+  //         borderReader.result.toString(),
+  //         (currentBorder: fabric.Image) => {
+  //           currentBorder.scaleToWidth(200);
+  //           currentBorder.setControlsVisibility({
+  //             bl: false,
+  //             br: false,
+  //             tl: false,
+  //             tr: false,
+  //             mb: false,
+  //             ml: false,
+  //             mr: false,
+  //             mt: false,
+  //             mtr: true,
+  //           });
+  //           canvas.add(currentBorder);
+  //           currentBorder.lockMovementX = true;
+  //           currentBorder.lockMovementY = true;
 
-            currentBorder.center();
-            setImageExists(true);
-          }
-        );
-      }
-    };
-    borderReader.readAsDataURL(file);
-  }
+  //           currentBorder.center();
+  //           setImageExists(true);
+  //         }
+  //       );
+  //     }
+  //   };
+  //   borderReader.readAsDataURL(file);
+  // }
   //clip circle
   function AddCircleClip() {
     const clipPath = new fabric.Circle({ radius: 98, opacity: 0.01 });
@@ -141,38 +200,35 @@ export const Canvas = (props: any) => {
     }
   }
 
+  function handleAddFile() {
+    frameApiService.sendMessage({
+      type: FrameMessageType.OPEN_MODAL,
+      data: {
+        type: ModalType.SELECT_MEDIA,
+        title: "mediatheque",
+      },
+    });
+  }
+  function handleSave() {
+    frameApiService.sendMessage({
+      type: FrameMessageType.REQUEST,
+      data: { entityType: EntityType.MEDIA, type: RequestMessageType.ADD, data: { file: {/* "myfile" */ } } } as AddRequestMessage<{
+        file: File;
+      }>,
+    });
+
+  }
   return (
     <>
       <section className={"FileSection"}>
-        <FileUploader
-          multiple={false}
-          handleChange={handleChange}
-          name={"file"}
-          types={fileTypes}
-          children={
-            <div className={"dragAndDropArea"}>
-              <p>Drag or drop you're file</p>
-              <p>File must have JPEG,PNG,GIF,PNG,MP4,AVI,WEBM,AVIF extension</p>
-            </div>
-          }
-        />
-        <FileUploader
-          multiple={false}
-          handleChange={handleChangeBorder}
-          name={"file"}
-          types={fileTypes}
-          children={
-            <div className={"dragAndDropArea"}>
-              <p>Drag or drop you're border file</p>
-              <p>File must have JPEG,PNG,GIF,PNG,MP4,AVI,WEBM,AVIF extension</p>
-            </div>
-          }
-        />
+        <button onClick={handleAddFile}>Add file from mediathèque</button>
+
       </section>
       <section className={"button-group"}>
         <button onClick={AddCircleClip}>Add circle clipping</button>
         <button onClick={cleanArea}>Clean area</button>
         <button onClick={deleteClip}>delete clip</button>
+        <button onClick={handleSave}>Envoi de l'image</button>
       </section>
       <div className={"canvas-container"} id="canvasContainer ">
         <canvas id="canvas" />
