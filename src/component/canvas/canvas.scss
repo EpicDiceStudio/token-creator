@@ -1,5 +1,16 @@
 .canvas-container {
-  display: flex;
-  justify-content: center;
+  .editor {
+    background-color: var(--gray-800);
+    border-radius: var(--border-radius);
+  }
 
+  .preview {
+    background-color: var(--surface-overlay-rgba-35);
+    border-radius: var(--border-radius);
+  }
+}
+
+.navbar {
+  background-color: var(--surface-b-rgba-50) !important;
+  height: var(--nav-bar-height);
 }

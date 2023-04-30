@@ -31,17 +31,17 @@ export const Canvas = () => {
       const canvasElement2 = document.getElementById("canvas2");
       const canvas = new fabric.Canvas(canvasElement as any, {
         selection: true,
-        backgroundColor: "blue",
-        width: 500,
-        height: 500,
+        backgroundColor: "transparent",
+        width: 400,
+        height: 400,
         preserveObjectStacking: true,
       });
 
       const canvas2 = new fabric.Canvas(canvasElement2 as any, {
         selection: true,
-        backgroundColor: "purple",
-        width: 500,
-        height: 500,
+        backgroundColor: "transparent",
+        width: 400,
+        height: 400,
         preserveObjectStacking: true,
       });
       setCanvas(canvas);
@@ -51,18 +51,28 @@ export const Canvas = () => {
         canvas2.renderAll();
         setCanvas2(canvas2);
       });
-      frameApiService.messageReceived$.subscribe((message) => {
-        onMessageReceived(message);
-      });
+      frameApiService.messageReceived$.subscribe( (e) => {
+        onMessageReceived(e, canvas)
+      } );
     }
   }, []);
 
-  function onMessageReceived(message: FrameMessage<any>) {
-
+  function onMessageReceived(message: FrameMessage<any>, canvas: fabric.Canvas | null) {
     switch (message.type) {
       case FrameMessageType.CONTEXT:
         const context = message.data as PlugInContext
         const medium = context.data as { url: string }
+
+        if(medium.url){
+          fabric.Image.fromURL(medium.url, (oImg: fabric.Image) => {
+            oImg.scaleToWidth(300);
+            if (canvas) {
+              canvas.add(oImg);
+              oImg.center();
+              setImageExists(true);
+            }
+          });
+        }
         break;
       case FrameMessageType.CLOSE:
         const url = message?.data?.url;
@@ -220,20 +230,35 @@ export const Canvas = () => {
   }
   return (
     <>
-      <section className={"FileSection"}>
-        <button onClick={handleAddFile}>Add file from mediathèque</button>
-
-      </section>
-      <section className={"button-group"}>
-        <button onClick={AddCircleClip}>Add circle clipping</button>
-        <button onClick={cleanArea}>Clean area</button>
-        <button onClick={deleteClip}>delete clip</button>
-        <button onClick={handleSave}>Envoi de l'image</button>
-      </section>
-      <div className={"canvas-container"} id="canvasContainer ">
+    <div className="navbar flex flex-wrap gap-3 justify-content-between align-content-center mb-3 p-2 ">
+      <div>
+        <button className="p-button p-button-text p-button-plain" onClick={handleAddFile}>
+          <i className="pi pi-plus pr-2"></i>Add file from mediathèque
+        </button>
+        <button className="p-button p-button-text p-button-plain" onClick={AddCircleClip}>
+          <i className="pi pi-plus pr-2"></i>Add circle clipping
+        </button>
+        <button className="p-button p-button-text p-button-plain" onClick={cleanArea}>
+          <i className="pi pi-eraser pr-2"></i>Clean area
+        </button>
+        <button className="p-button p-button-text p-button-plain" onClick={deleteClip}>
+          <i className="pi pi-trash pr-2"></i>Remove clip
+        </button>
+      </div>
+      <div>
+        <button className="p-button" onClick={handleSave}>Save</button>
+      </div>
+    </div>
+    <div className={"canvas-container flex gap-3 justify-content-center mt-6"} id="canvasContainer ">
+      <div className="text-center editor">
+        <h3>Editor</h3>
         <canvas id="canvas" />
+      </div>
+      <div className="text-center preview">
+        <h3>Preview</h3>
         <canvas id="canvas2" />
       </div>
+    </div>
     </>
   );
 };
