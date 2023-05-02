@@ -15,7 +15,6 @@ import {
 
 export const Canvas = () => {
   const [file, setFile] = useState(false);
-  const [test, setTest] = useState({})
   const [canvas, setCanvas] = useState<fabric.Canvas | null>(null);
   const [canvas2, setCanvas2] = useState<fabric.Canvas | null>(null);
 
@@ -238,7 +237,6 @@ export const Canvas = () => {
   }
 
   function handleSave() {
-    console.log(1);
     if (canvas2 && canvas2.clipPath) {
       const base64Url = canvas2.toDataURL({
         format: 'png',
@@ -247,13 +245,10 @@ export const Canvas = () => {
         width: 200,
         height: 200
       })
-      console.log(2);
       fetch(base64Url)
         .then(res => res.blob())
         .then(blob => {
-          const date = new Date()
-          const finalResult = new File([blob], `file ${date}`, { type: "image/png" })
-          console.log(3);
+          const finalResult = new File([blob], "Token", { type: "image/png" })
 
           frameApiService.sendMessage({
             type: FrameMessageType.REQUEST,
@@ -261,12 +256,12 @@ export const Canvas = () => {
               file: File;
             }>,
           });
-          console.log(4);
         })
     } else {
       alert("addClipPath for save file")
     }
   }
+
   return (
     <>
       <div className="navbar flex flex-wrap gap-3 justify-content-between align-content-center mb-3 p-2 ">
