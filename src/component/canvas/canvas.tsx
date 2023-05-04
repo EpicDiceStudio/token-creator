@@ -15,7 +15,6 @@ import {
 import fileTypes from "../../utils/filetype/filetype";
 import { FileUploader } from "react-drag-drop-files";
 import { CustomObjectType } from "../../utils/enums/custom-object-type";
-
 import * as messageMethod from "../../utils/service/onMessageReceiveService";
 
 export const Canvas = () => {
@@ -23,21 +22,20 @@ export const Canvas = () => {
   const [canvas2, setCanvas2] = useState<fabric.Canvas | null>(null);
   const [menuClipping, setMenuClipping] = useState<SetStateAction<boolean>>(false);
   const [menuItem, setMenuItem] = useState<SetStateAction<boolean>>(false);
-
+  //taille canvas
   const canvasHeight = 400;
   const canvasWidth = 400;
+  //image scaling
   const imageScaling = 300;
   const borderScaling = 200;
-
+  //clipPath paramètre
   const clipPathOpacity = 0.01;
-
   const circleClipPathRadius = 100;
-
   const rectClipPathWidth = 200;
   const rectClipPathHeight = 200;
   const rectClipPathLeftPosition = 100;
   const rectClipPathTopPosition = 100;
-
+  //paramètre image enregistrer
   const exportImageName = "Token";
   const exportImageLeftPosition = 100;
   const exportImageTopPosition = 100;
@@ -63,11 +61,14 @@ export const Canvas = () => {
   //     (selectedRemoveItem as any).interaction()
   //   }
   // }, [selectedRemoveItem])
+
+  //paramètre corner
   fabric.Object.prototype.cornerStyle = "circle";
   fabric.Object.prototype.cornerColor = "black";
 
-
+  //génération des canvas
   useEffect(() => {
+
     if (!canvas) {
       const canvasElement = document.getElementById("canvas");
       const canvasElement2 = document.getElementById("canvas2");
@@ -87,6 +88,7 @@ export const Canvas = () => {
         preserveObjectStacking: true,
       });
       setCanvas(canvas);
+
       canvas.on("after:render", () => {
         const backgroundImage = canvas2?.getObjects().find(element => (element as any).customType === CustomObjectType.BACKGROUND_IMAGE)
         canvas2.clear();
@@ -110,17 +112,19 @@ export const Canvas = () => {
           return toto;
         }));
 
-
         canvas2.renderAll();
         setCanvas2(canvas2);
       });
+
       frameApiService.messageReceived$.subscribe((e) => {
         onMessageReceived(e, canvas)
       });
     }
-  },);
+  }, [canvas]);
 
+  //partie gestion des messages
   function onMessageReceived(message: FrameMessage<any>, canvas: fabric.Canvas | null) {
+
     switch (message.type) {
       case FrameMessageType.CONTEXT:
         messageMethod.messageContext(message, canvas, imageScaling)
@@ -135,8 +139,18 @@ export const Canvas = () => {
     }
   }
 
+  function handleAddFile() {
+    frameApiService.sendMessage({
+      type: FrameMessageType.OPEN_MODAL,
+      data: {
+        type: ModalType.SELECT_MEDIA,
+        title: "mediatheque",
+      },
+    });
+  }
   //partie Bordure
   function handleChangeBorder(file: any): void {
+
     const borderReader = new FileReader();
     borderReader.onload = () => {
       if (borderReader.result && canvas) {
@@ -172,17 +186,20 @@ export const Canvas = () => {
     };
     borderReader.readAsDataURL(file);
   }
+  //partie image de fond 
   function handleChangeBgcImg(file: any): void {
 
     const borderReader = new FileReader();
     borderReader.onload = () => {
-      if (borderReader.result && canvas) {
 
+      if (borderReader.result && canvas) {
         fabric.Image.fromURL(
           borderReader.result.toString(),
           (oImg: fabric.Image) => {
             const previousbackgroundImage = canvas?.getObjects().find(element => (element as any).customType === CustomObjectType.BACKGROUND_IMAGE)
+
             if (previousbackgroundImage) {
+
               if (previousbackgroundImage.clipPath) {
                 oImg.clipPath = previousbackgroundImage.clipPath
               }
@@ -200,59 +217,81 @@ export const Canvas = () => {
     };
     borderReader.readAsDataURL(file);
   }
-
+  //partie clipping
   function AddCircleClip() {
+
     deleteClip()
     const clipPath = new fabric.Circle({ radius: circleClipPathRadius, opacity: clipPathOpacity, absolutePositioned: true });
+
     if (canvas2) {
       clipPath.lockMovementX = true;
       clipPath.lockMovementY = true;
+      clipPath.setControlsVisibility({
+        mtr: false,
+      });
       canvas2.add(clipPath);
       clipPath.selectable = true;
+
       if (canvas2.width && canvas2.height) {
         clipPath.left = canvas2.width / 2 - 100;
         clipPath.top = canvas2.height / 2 - 100;
       }
       const backgroundImage = canvas2?.getObjects().find(element => (element as any).customType === CustomObjectType.BACKGROUND_IMAGE)
+
       if (backgroundImage) { backgroundImage.clipPath = clipPath }
     }
   }
 
   function AddRecClip() {
+
     deleteClip()
     const clipPath = new fabric.Rect({ width: rectClipPathWidth, height: rectClipPathHeight, opacity: clipPathOpacity, absolutePositioned: true })
+
     if (canvas2) {
       clipPath.lockMovementX = true;
       clipPath.lockMovementY = true;
+      clipPath.setControlsVisibility({
+        mtr: false,
+      });
       canvas2.add(clipPath);
       clipPath.selectable = true;
+
       if (canvas2.width && canvas2.height) {
         clipPath.left = rectClipPathLeftPosition;
         clipPath.top = rectClipPathTopPosition;
       }
       const backgroundImage = canvas2?.getObjects().find(element => (element as any).customType === CustomObjectType.BACKGROUND_IMAGE)
+
       if (backgroundImage) { backgroundImage.clipPath = clipPath }
     }
   }
 
-
+  //partie retirer élément ou tout
   function cleanArea() {
+
     if (canvas) {
       deleteClip()
       canvas.clear();
     }
   }
+
   function deleteClip() {
+
     if (canvas2) {
       const backgroundImage = canvas2?.getObjects().find(element => (element as any).customType === CustomObjectType.BACKGROUND_IMAGE)
+
       if (backgroundImage) { backgroundImage.clipPath = undefined }
       canvas2.renderAll();
     }
   }
+
   function deleteBackgroundImage() {
+
     if (canvas) {
+
       if (canvas2) { deleteClip() }
       const backgroundImage = canvas?.getObjects().find(element => (element as any).customType === CustomObjectType.BACKGROUND_IMAGE)
+
       if (backgroundImage) {
         canvas.remove(backgroundImage)
         canvas.renderAll()
@@ -260,8 +299,10 @@ export const Canvas = () => {
     }
   }
   function deleteBorder() {
+
     if (canvas) {
       const borderImage = canvas?.getObjects().find(element => (element as any).customType === CustomObjectType.BORDER_IMAGE)
+
       if (borderImage) {
         canvas.remove(borderImage)
         canvas.renderAll()
@@ -269,18 +310,9 @@ export const Canvas = () => {
     }
   }
 
-
-  function handleAddFile() {
-    frameApiService.sendMessage({
-      type: FrameMessageType.OPEN_MODAL,
-      data: {
-        type: ModalType.SELECT_MEDIA,
-        title: "mediatheque",
-      },
-    });
-  }
-
+  //partie sauvegarde
   function handleSave() {
+
     const backgroundImage = canvas2?.getObjects().find(element => (element as any).customType === CustomObjectType.BACKGROUND_IMAGE)
 
     if (canvas2 && backgroundImage?.clipPath) {
@@ -311,14 +343,10 @@ export const Canvas = () => {
   return (
     <>
       <div className="navbar flex flex-wrap gap-3 justify-content-between align-content-center mb-1 p-2 ">
-
         {/* <Dropdown value={selectedClipping} onChange={(e) => setSelectedClipping(e.value)} options={clippings} optionLabel="name"
           placeholder="clipping options" className="w-full md:w-14rem dropdown" appendTo={"self"} />
-
-
         <Dropdown value={selectedRemoveItem} onChange={(e) => setSelectedRemoveItem(e.value)} options={deleteItem} optionLabel="name"
           placeholder="delete item" className="w-full md:w-14rem dropdown" appendTo={"self"} /> */}
-
         <div>
           <button className="p-button p-button-text p-button-plain" onClick={handleAddFile}>
             <i className="pi pi-plus pr-2"></i>Add file from mediathèque
