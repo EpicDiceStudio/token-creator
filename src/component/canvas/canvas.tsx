@@ -9,22 +9,40 @@ import {
   EntityType,
   FrameMessage,
   FrameMessageType,
-  LoadRequestMessage,
   ModalType,
-  PlugInContext,
   RequestMessageType,
 } from "@epic-dice-studio/dice-stories-plug-ins-api";
 import fileTypes from "../../utils/filetype/filetype";
 import { FileUploader } from "react-drag-drop-files";
 import { CustomObjectType } from "../../utils/enums/custom-object-type";
 
+import * as messageMethod from "../../utils/service/onMessageReceiveService";
+
 export const Canvas = () => {
   const [canvas, setCanvas] = useState<fabric.Canvas | null>(null);
   const [canvas2, setCanvas2] = useState<fabric.Canvas | null>(null);
-  const [selectedClipping, setSelectedClipping] = useState(null);
-  const [selectedRemoveItem, setSelectedRemoveItem] = useState(null);
   const [menuClipping, setMenuClipping] = useState<SetStateAction<boolean>>(false);
   const [menuItem, setMenuItem] = useState<SetStateAction<boolean>>(false);
+
+  const canvasHeight = 400;
+  const canvasWidth = 400;
+  const imageScaling = 300;
+  const borderScaling = 200;
+
+  const clipPathOpacity = 0.01;
+
+  const circleClipPathRadius = 100;
+
+  const rectClipPathWidth = 200;
+  const rectClipPathHeight = 200;
+  const rectClipPathLeftPosition = 100;
+  const rectClipPathTopPosition = 100;
+
+  const exportImageName = "Token";
+  const exportImageLeftPosition = 100;
+  const exportImageTopPosition = 100;
+  const exportImageHeight = 200;
+  const exportImageWidth = 200;
 
   // const clippings = [
   //   { name: 'circle clipping', interaction: () => AddCircleClip() },
@@ -56,16 +74,16 @@ export const Canvas = () => {
       const canvas = new fabric.Canvas(canvasElement as any, {
         selection: true,
         backgroundColor: "transparent",
-        width: 400,
-        height: 400,
+        width: canvasWidth,
+        height: canvasHeight,
         preserveObjectStacking: true,
       });
 
       const canvas2 = new fabric.Canvas(canvasElement2 as any, {
         selection: false,
         backgroundColor: "transparent",
-        width: 400,
-        height: 400,
+        width: canvasWidth,
+        height: canvasHeight,
         preserveObjectStacking: true,
       });
       setCanvas(canvas);
@@ -100,66 +118,19 @@ export const Canvas = () => {
         onMessageReceived(e, canvas)
       });
     }
-  }, []);
+  },);
 
   function onMessageReceived(message: FrameMessage<any>, canvas: fabric.Canvas | null) {
     switch (message.type) {
       case FrameMessageType.CONTEXT:
-        const context = message.data as PlugInContext
-        const medium = context.data as { url: string }
-
-        if (medium.url) {
-          fabric.Image.fromURL(medium.url, (oImg: fabric.Image) => {
-            if (canvas) {
-              const previousbackgroundImage = canvas?.getObjects().find(element => (element as any).customType === CustomObjectType.BACKGROUND_IMAGE)
-              if (previousbackgroundImage) {
-                if (previousbackgroundImage.clipPath) {
-                  oImg.clipPath = previousbackgroundImage.clipPath
-                }
-                canvas.remove(previousbackgroundImage)
-              }
-              oImg.scaleToWidth(300);
-              canvas.add(oImg);
-              oImg.center();
-              canvas.sendBackwards(oImg);
-            }
-          }, { crossOrigin: 'anonymous', customType: CustomObjectType.BACKGROUND_IMAGE } as any);
-        }
+        messageMethod.messageContext(message, canvas, imageScaling)
         break;
       case FrameMessageType.CLOSE:
-        const url = message?.data?.url;
-        if (url) {
-          fabric.Image.fromURL(url, (oImg: fabric.Image) => {
-            oImg.scaleToWidth(300);
-            if (canvas) {
-              canvas.add(oImg);
-              oImg.center();
-            }
-          }, { crossOrigin: 'anonymous' });
-        }
+        messageMethod.messageClose(message, canvas, imageScaling)
         break;
 
       case FrameMessageType.REQUEST:
-        const request = message as FrameMessage<AddRequestMessage<any>>;
-        if (request?.data?.type === RequestMessageType.ADD && request.data.entityType === EntityType.MEDIA) {
-
-          const filters = new Map<string, any>()
-          filters.set('id', request.data.data)
-          frameApiService.sendMessage({
-            type: FrameMessageType.REQUEST,
-            data: {
-              entityType: EntityType.MEDIUM,
-              type: RequestMessageType.LOAD,
-              filters
-            } as LoadRequestMessage
-          })
-        }
-        if ((request?.data?.type === RequestMessageType.LOAD && request.data.entityType === EntityType.MEDIUM)) {
-          frameApiService.sendMessage({
-            type: FrameMessageType.CLOSE,
-            data: request.data.data,
-          })
-        }
+        messageMethod.messageRequest(message)
         break;
     }
   }
@@ -176,7 +147,7 @@ export const Canvas = () => {
             if (previousBorder) {
               canvas.remove(previousBorder)
             }
-            currentBorder.scaleToWidth(200);
+            currentBorder.scaleToWidth(borderScaling);
             if (currentBorder != undefined) { currentBorder.selectable = false }
             currentBorder.setControlsVisibility({
               bl: false,
@@ -217,7 +188,7 @@ export const Canvas = () => {
               }
               canvas.remove(previousbackgroundImage)
             }
-            oImg.scaleToWidth(300);
+            oImg.scaleToWidth(imageScaling);
             canvas.add(oImg);
             oImg.center();
             canvas.sendBackwards(oImg);
@@ -232,7 +203,7 @@ export const Canvas = () => {
 
   function AddCircleClip() {
     deleteClip()
-    const clipPath = new fabric.Circle({ radius: 100, opacity: 0.01, absolutePositioned: true });
+    const clipPath = new fabric.Circle({ radius: circleClipPathRadius, opacity: clipPathOpacity, absolutePositioned: true });
     if (canvas2) {
       clipPath.lockMovementX = true;
       clipPath.lockMovementY = true;
@@ -249,15 +220,15 @@ export const Canvas = () => {
 
   function AddRecClip() {
     deleteClip()
-    const clipPath = new fabric.Rect({ width: 200, height: 200, opacity: 0.01, absolutePositioned: true })
+    const clipPath = new fabric.Rect({ width: rectClipPathWidth, height: rectClipPathHeight, opacity: clipPathOpacity, absolutePositioned: true })
     if (canvas2) {
       clipPath.lockMovementX = true;
       clipPath.lockMovementY = true;
       canvas2.add(clipPath);
       clipPath.selectable = true;
       if (canvas2.width && canvas2.height) {
-        clipPath.left = 100;
-        clipPath.top = 100;
+        clipPath.left = rectClipPathLeftPosition;
+        clipPath.top = rectClipPathTopPosition;
       }
       const backgroundImage = canvas2?.getObjects().find(element => (element as any).customType === CustomObjectType.BACKGROUND_IMAGE)
       if (backgroundImage) { backgroundImage.clipPath = clipPath }
@@ -310,18 +281,20 @@ export const Canvas = () => {
   }
 
   function handleSave() {
-    if (canvas2 && canvas2.clipPath) {
+    const backgroundImage = canvas2?.getObjects().find(element => (element as any).customType === CustomObjectType.BACKGROUND_IMAGE)
+
+    if (canvas2 && backgroundImage?.clipPath) {
       const base64Url = canvas2.toDataURL({
         format: 'png',
-        left: 100,
-        top: 100,
-        width: 200,
-        height: 200
+        left: exportImageLeftPosition,
+        top: exportImageTopPosition,
+        width: exportImageWidth,
+        height: exportImageHeight
       })
       fetch(base64Url)
         .then(res => res.blob())
         .then(blob => {
-          const finalResult = new File([blob], "Token", { type: "image/png" })
+          const finalResult = new File([blob], exportImageName, { type: "image/png" })
 
           frameApiService.sendMessage({
             type: FrameMessageType.REQUEST,
@@ -337,7 +310,7 @@ export const Canvas = () => {
 
   return (
     <>
-      <div className="navbar flex flex-wrap gap-3 justify-content-between align-content-center mb-3 p-2 ">
+      <div className="navbar flex flex-wrap gap-3 justify-content-between align-content-center mb-1 p-2 ">
 
         {/* <Dropdown value={selectedClipping} onChange={(e) => setSelectedClipping(e.value)} options={clippings} optionLabel="name"
           placeholder="clipping options" className="w-full md:w-14rem dropdown" appendTo={"self"} />
