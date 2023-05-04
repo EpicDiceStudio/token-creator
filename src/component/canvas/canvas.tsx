@@ -2,7 +2,7 @@ import { fabric } from "fabric";
 import "./canvas.scss";
 import { SetStateAction, useEffect, useState } from "react";
 import frameApiService from "../../utils/service/frameApiService";
-import { Dropdown } from 'primereact/dropdown';
+// import { Dropdown } from 'primereact/dropdown';
 
 import {
   AddRequestMessage,
@@ -220,7 +220,7 @@ export const Canvas = () => {
     borderReader.readAsDataURL(file);
   }
   //partie clipping
-  function AddCircleClip() {
+  function AddCircleClip(): void {
 
     deleteClip()
     const clipPath = new fabric.Circle({ radius: circleClipPathRadius, opacity: clipPathOpacity, absolutePositioned: true });
@@ -244,7 +244,7 @@ export const Canvas = () => {
     }
   }
 
-  function AddRecClip() {
+  function AddRecClip(): void {
 
     deleteClip()
     const clipPath = new fabric.Rect({ width: rectClipPathWidth, height: rectClipPathHeight, opacity: clipPathOpacity, absolutePositioned: true })
@@ -269,7 +269,7 @@ export const Canvas = () => {
   }
 
   //partie retirer élément ou tout
-  function cleanArea() {
+  function cleanArea(): void {
 
     if (canvas) {
       deleteClip()
@@ -277,7 +277,7 @@ export const Canvas = () => {
     }
   }
 
-  function deleteClip() {
+  function deleteClip(): void {
 
     if (canvas2) {
       const backgroundImage = canvas2?.getObjects().find(element => (element as any).customType === CustomObjectType.BACKGROUND_IMAGE)
@@ -287,7 +287,7 @@ export const Canvas = () => {
     }
   }
 
-  function deleteBackgroundImage() {
+  function deleteBackgroundImage(): void {
 
     if (canvas) {
 
@@ -300,7 +300,7 @@ export const Canvas = () => {
       }
     }
   }
-  function deleteBorder() {
+  function deleteBorder(): void {
 
     if (canvas) {
       const borderImage = canvas?.getObjects().find(element => (element as any).customType === CustomObjectType.BORDER_IMAGE)
@@ -313,7 +313,7 @@ export const Canvas = () => {
   }
 
   //partie sauvegarde
-  function handleSave() {
+  function handleSave(): void {
 
     const backgroundImage = canvas2?.getObjects().find(element => (element as any).customType === CustomObjectType.BACKGROUND_IMAGE)
 
