@@ -22,6 +22,8 @@ export const Canvas = () => {
   const [canvas2, setCanvas2] = useState<fabric.Canvas | null>(null);
   const [menuClipping, setMenuClipping] = useState<SetStateAction<boolean>>(false);
   const [menuItem, setMenuItem] = useState<SetStateAction<boolean>>(false);
+  // const [selectedClipping, setSelectedClipping] = useState<SetStateAction<boolean>>(false);
+  // const [selectedRemoveItem, setSelectedRemoveItem] = useState<SetStateAction<boolean>>(false);
   //taille canvas
   const canvasHeight = 400;
   const canvasWidth = 400;
@@ -41,7 +43,7 @@ export const Canvas = () => {
   const exportImageTopPosition = 100;
   const exportImageHeight = 200;
   const exportImageWidth = 200;
-
+  // //option menu clipping et delete item
   // const clippings = [
   //   { name: 'circle clipping', interaction: () => AddCircleClip() },
   //   { name: 'Rec clipping', interaction: () => AddRecClip() },
