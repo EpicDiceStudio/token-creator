@@ -1,8 +1,7 @@
-import { fabric } from "fabric";
 import "./canvas.scss";
-import { SetStateAction, useEffect, useState } from "react";
-import frameApiService from "../../utils/service/frameApiService";
-// import { Dropdown } from 'primereact/dropdown';
+import { fabric } from "fabric";
+import { useEffect, useState, useRef } from "react";
+import { Menu } from "primereact/menu";
 
 import {
   AddRequestMessage,
@@ -12,133 +11,181 @@ import {
   ModalType,
   RequestMessageType,
 } from "@epic-dice-studio/dice-stories-plug-ins-api";
-import fileTypes from "../../utils/filetype/filetype";
-import { FileUploader } from "react-drag-drop-files";
-import { CustomObjectType } from "../../utils/enums/custom-object-type";
-import * as messageMethod from "../../utils/service/onMessageReceiveService";
+import frameApiService from "../../service/frame-api.service";
+import { CanvasFacade } from "../../service/canvas-facade.service";
+import { DiceStoriesApi } from "../../service/dice-stories-api.service";
 
 export const Canvas = () => {
+  //#region states
   const [canvas, setCanvas] = useState<fabric.Canvas | null>(null);
-  const [canvas2, setCanvas2] = useState<fabric.Canvas | null>(null);
-  const [menuClipping, setMenuClipping] = useState<SetStateAction<boolean>>(false);
-  const [menuItem, setMenuItem] = useState<SetStateAction<boolean>>(false);
-  // const [selectedClipping, setSelectedClipping] = useState<SetStateAction<boolean>>(false);
-  // const [selectedRemoveItem, setSelectedRemoveItem] = useState<SetStateAction<boolean>>(false);
-  //taille canvas
+  const [previewCanvas, setPreviewCanvas] = useState<fabric.Canvas | null>(
+    null
+  );
+  const [addingBackground, setAddingBackground] = useState<boolean>(false);
+  const [addingBorder, setAddingBorder] = useState<boolean>(false);
+  const [message, setMessage] = useState<any>(null);
+  //#endregion
+
+  //#region refs
+  const addMenu = useRef(null);
+  const clippingMenu = useRef(null);
+  const deleteMenu = useRef(null);
+  //#endregion
+
+  //#region consts
+  const exportImageName = "Token";
+
+  //#region canvas
   const canvasHeight = 400;
   const canvasWidth = 400;
-  //image scaling
+  //#endregion
+
+  //#region scaling
   const imageScaling = 300;
   const borderScaling = 200;
-  //clipPath paramètre
+  //#endregion
+
+  //#region objects properties
   const clipPathOpacity = 0.01;
   const circleClipPathRadius = 100;
   const rectClipPathWidth = 200;
   const rectClipPathHeight = 200;
-  const rectClipPathLeftPosition = 100;
-  const rectClipPathTopPosition = 100;
-  //paramètre image enregistrer
-  const exportImageName = "Token";
-  const exportImageLeftPosition = 100;
-  const exportImageTopPosition = 100;
-  const exportImageHeight = 200;
-  const exportImageWidth = 200;
-  // //option menu clipping et delete item
-  // const clippings = [
-  //   { name: 'circle clipping', interaction: () => AddCircleClip() },
-  //   { name: 'Rec clipping', interaction: () => AddRecClip() },
-  //   { name: 'Remove clip', interaction: () => deleteClip() },
-  // ];
-  // const deleteItem = [
-  //   { name: 'delete background', interaction: () => deleteBackgroundImage() },
-  //   { name: 'delete border', interaction: () => deleteBorder() },
-  // ];
-  // useEffect(() => {
-  //   if (selectedClipping) {
-  //     (selectedClipping as any).interaction()
-  //   }
-  // }, [selectedClipping])
-  // useEffect(() => {
-  //   if (selectedRemoveItem) {
-  //     (selectedRemoveItem as any).interaction()
-  //   }
-  // }, [selectedRemoveItem])
+  //#endregion
 
-  //paramètre corner
-  fabric.Object.prototype.cornerStyle = "circle";
-  fabric.Object.prototype.cornerColor = "black";
+  //#region menus
+  const addFiles = [
+    { label: "Background", command: () => requestAddBackground() },
+    { label: "Border", command: () => requestAddBorder() },
+  ];
 
-  //génération des canvas
+  const clippings = [
+    {
+      label: "Circle",
+      command: () => {
+        if (previewCanvas)
+          CanvasFacade.addCircleClip(
+            circleClipPathRadius,
+            clipPathOpacity,
+            previewCanvas
+          );
+      },
+    },
+    {
+      label: "Rectangle",
+      command: () => {
+        if (previewCanvas)
+          CanvasFacade.addRectangleClip(
+            rectClipPathWidth,
+            rectClipPathHeight,
+            clipPathOpacity,
+            previewCanvas
+          );
+      },
+    },
+    { label: "Remove", command: () => {} },
+  ];
+
+  const deleteItem = [
+    { label: "Background", command: () => removeBackgroundImage() },
+    { label: "Border", command: () => removeBorder() },
+    { label: "All", command: () => clean() },
+  ];
+  //#endregion
+  //#endregion
+
+  //#region effects
+
   useEffect(() => {
-
     if (!canvas) {
-      const canvasElement = document.getElementById("canvas");
-      const canvasElement2 = document.getElementById("canvas2");
-      const canvas = new fabric.Canvas(canvasElement as any, {
-        selection: true,
-        backgroundColor: "transparent",
-        width: canvasWidth,
-        height: canvasHeight,
-        preserveObjectStacking: true,
-      });
+      const canvas = CanvasFacade.create(canvasWidth, canvasHeight, "canvas");
+      const previewCanvas = CanvasFacade.create(
+        canvasWidth,
+        canvasHeight,
+        "previewCanvas"
+      );
 
-      const canvas2 = new fabric.Canvas(canvasElement2 as any, {
-        selection: false,
-        backgroundColor: "transparent",
-        width: canvasWidth,
-        height: canvasHeight,
-        preserveObjectStacking: true,
-      });
-      setCanvas(canvas);
+      if (canvas && previewCanvas) {
+        setCanvas(canvas);
+        setPreviewCanvas(previewCanvas);
 
-      canvas.on("after:render", () => {
-        const backgroundImage = canvas2?.getObjects().find(element => (element as any).customType === CustomObjectType.BACKGROUND_IMAGE)
-        canvas2.clear();
-        if (backgroundImage?.clipPath) {
-          canvas2.add(backgroundImage.clipPath)
-        }
-        canvas2.add(...canvas.getObjects().map((o) => {
-          const toto = fabric.util.object.clone(o)
-          toto.set({
-            selectable: false,
-            evented: false,
-            lockMovementX: true,
-            lockMovementY: true,
-            lockRotation: true,
-            hasControls: false,
-            hasBorders: false
-          });
-          if (backgroundImage?.clipPath && toto.customType === CustomObjectType.BACKGROUND_IMAGE) {
-            toto.clipPath = backgroundImage.clipPath
+        canvas.on("after:render", () => {
+          const backgroundImage = CanvasFacade.getBackgroundObject(
+            ...CanvasFacade.getObjects(previewCanvas)
+          );
+
+          CanvasFacade.clear(previewCanvas);
+
+          if (backgroundImage?.clipPath) {
+            CanvasFacade.add(previewCanvas, backgroundImage.clipPath);
           }
-          return toto;
-        }));
 
-        canvas2.renderAll();
-        setCanvas2(canvas2);
-      });
+          const objects = CanvasFacade.getObjects(canvas);
+          const previewObjects = CanvasFacade.mapToPreviewObjects(...objects);
 
-      frameApiService.messageReceived$.subscribe((e) => {
-        onMessageReceived(e, canvas)
-      });
+          if (backgroundImage?.clipPath) {
+            const backgroundObject = CanvasFacade.getBackgroundObject(
+              ...previewObjects
+            );
+            if (backgroundObject)
+              backgroundObject.clipPath = backgroundImage.clipPath;
+          }
+
+          CanvasFacade.add(previewCanvas, ...previewObjects);
+
+          previewCanvas.renderAll();
+          setPreviewCanvas(previewCanvas);
+        });
+
+        frameApiService.messageReceived$.subscribe((e) => {
+          setMessage(e);
+        });
+      }
     }
   }, [canvas]);
 
-  //partie gestion des messages
-  function onMessageReceived(message: FrameMessage<any>, canvas: fabric.Canvas | null) {
-
-    switch (message.type) {
-      case FrameMessageType.CONTEXT:
-        messageMethod.messageContext(message, canvas, imageScaling)
-        break;
-      case FrameMessageType.CLOSE:
-        messageMethod.messageClose(message, canvas, imageScaling)
-        break;
-
-      case FrameMessageType.REQUEST:
-        messageMethod.messageRequest(message)
-        break;
+  useEffect(() => {
+    if (message) {
+      switch (message.type) {
+        case FrameMessageType.CLOSE:
+          handleSelectMedium(message, canvas);
+          break;
+        case FrameMessageType.REQUEST:
+          DiceStoriesApi.handleRequest(message);
+          break;
+      }
     }
+  }, [message]);
+
+  //#endregion
+
+  //#region menu actions
+
+  function handleSelectMedium(
+    message: FrameMessage<any>,
+    canvas: fabric.Canvas | null
+  ): void {
+    const url = message?.data?.url;
+    if (url && canvas) {
+      if (addingBackground) {
+        setAddingBackground(false);
+        CanvasFacade.addBackgroundImage(url, canvas, imageScaling);
+      } else if (addingBorder) {
+        setAddingBorder(false);
+        CanvasFacade.addBorderImage(url, canvas, borderScaling);
+      }
+    }
+  }
+
+  function requestAddBackground(): void {
+    setAddingBackground(true);
+    setAddingBorder(false);
+    handleAddFile();
+  }
+
+  function requestAddBorder(): void {
+    setAddingBackground(false);
+    setAddingBorder(true);
+    handleAddFile();
   }
 
   function handleAddFile() {
@@ -150,278 +197,130 @@ export const Canvas = () => {
       },
     });
   }
-  //partie Bordure
-  function handleChangeBorder(file: any): void {
 
-    const borderReader = new FileReader();
-    borderReader.onload = () => {
-      if (borderReader.result && canvas) {
-        fabric.Image.fromURL(
-          borderReader.result.toString(),
-          (currentBorder: fabric.Image) => {
-            const previousBorder = canvas?.getObjects().find(element => (element as any).customType === CustomObjectType.BORDER_IMAGE)
-            if (previousBorder) {
-              canvas.remove(previousBorder)
-            }
-            currentBorder.scaleToWidth(borderScaling);
-            if (currentBorder != undefined) { currentBorder.selectable = false }
-            currentBorder.setControlsVisibility({
-              bl: false,
-              br: false,
-              tl: false,
-              tr: false,
-              mb: false,
-              ml: false,
-              mr: false,
-              mt: false,
-              mtr: false,
-            });
-            canvas.add(currentBorder);
-            currentBorder.lockMovementX = true;
-            currentBorder.lockMovementY = true;
-            currentBorder.center();
-          }, {
-            customType: CustomObjectType.BORDER_IMAGE
-          } as any
-        );
-      }
-    };
-    borderReader.readAsDataURL(file);
-  }
-  //partie image de fond 
-  function handleChangeBgcImg(file: any): void {
-
-    const borderReader = new FileReader();
-    borderReader.onload = () => {
-
-      if (borderReader.result && canvas) {
-        fabric.Image.fromURL(
-          borderReader.result.toString(),
-          (oImg: fabric.Image) => {
-            const previousbackgroundImage = canvas?.getObjects().find(element => (element as any).customType === CustomObjectType.BACKGROUND_IMAGE)
-
-            if (previousbackgroundImage) {
-
-              if (previousbackgroundImage.clipPath) {
-                oImg.clipPath = previousbackgroundImage.clipPath
-              }
-              canvas.remove(previousbackgroundImage)
-            }
-            oImg.scaleToWidth(imageScaling);
-            canvas.add(oImg);
-            oImg.center();
-            canvas.sendBackwards(oImg);
-          }, {
-            customType: CustomObjectType.BACKGROUND_IMAGE
-          } as any
-        );
-      }
-    };
-    borderReader.readAsDataURL(file);
-  }
-  //partie clipping
-  function AddCircleClip(): void {
-
-    deleteClip()
-    const clipPath = new fabric.Circle({ radius: circleClipPathRadius, opacity: clipPathOpacity, absolutePositioned: true });
-
-    if (canvas2) {
-      clipPath.lockMovementX = true;
-      clipPath.lockMovementY = true;
-      clipPath.setControlsVisibility({
-        mtr: false,
-      });
-      canvas2.add(clipPath);
-      clipPath.selectable = true;
-
-      if (canvas2.width && canvas2.height) {
-        clipPath.left = canvas2.width / 2 - 100;
-        clipPath.top = canvas2.height / 2 - 100;
-      }
-      const backgroundImage = canvas2?.getObjects().find(element => (element as any).customType === CustomObjectType.BACKGROUND_IMAGE)
-
-      if (backgroundImage) { backgroundImage.clipPath = clipPath }
+  function clean(): void {
+    if (canvas && previewCanvas) {
+      CanvasFacade.removeBackgroundImageClip(previewCanvas);
+      CanvasFacade.clear(canvas);
     }
   }
 
-  function AddRecClip(): void {
-
-    deleteClip()
-    const clipPath = new fabric.Rect({ width: rectClipPathWidth, height: rectClipPathHeight, opacity: clipPathOpacity, absolutePositioned: true })
-
-    if (canvas2) {
-      clipPath.lockMovementX = true;
-      clipPath.lockMovementY = true;
-      clipPath.setControlsVisibility({
-        mtr: false,
-      });
-      canvas2.add(clipPath);
-      clipPath.selectable = true;
-
-      if (canvas2.width && canvas2.height) {
-        clipPath.left = rectClipPathLeftPosition;
-        clipPath.top = rectClipPathTopPosition;
-      }
-      const backgroundImage = canvas2?.getObjects().find(element => (element as any).customType === CustomObjectType.BACKGROUND_IMAGE)
-
-      if (backgroundImage) { backgroundImage.clipPath = clipPath }
-    }
-  }
-
-  //partie retirer élément ou tout
-  function cleanArea(): void {
-
+  function removeBackgroundImage(): void {
     if (canvas) {
-      deleteClip()
-      canvas.clear();
-    }
-  }
+      if (previewCanvas) {
+        CanvasFacade.removeBackgroundImageClip(previewCanvas);
+      }
 
-  function deleteClip(): void {
-
-    if (canvas2) {
-      const backgroundImage = canvas2?.getObjects().find(element => (element as any).customType === CustomObjectType.BACKGROUND_IMAGE)
-
-      if (backgroundImage) { backgroundImage.clipPath = undefined }
-      canvas2.renderAll();
-    }
-  }
-
-  function deleteBackgroundImage(): void {
-
-    if (canvas) {
-
-      if (canvas2) { deleteClip() }
-      const backgroundImage = canvas?.getObjects().find(element => (element as any).customType === CustomObjectType.BACKGROUND_IMAGE)
+      const backgroundImage = CanvasFacade.getBackgroundObject(
+        ...CanvasFacade.getObjects(canvas)
+      );
 
       if (backgroundImage) {
-        canvas.remove(backgroundImage)
-        canvas.renderAll()
+        CanvasFacade.removeObjects(canvas, backgroundImage);
       }
     }
   }
-  function deleteBorder(): void {
 
+  function removeBorder(): void {
     if (canvas) {
-      const borderImage = canvas?.getObjects().find(element => (element as any).customType === CustomObjectType.BORDER_IMAGE)
+      const borderImage = CanvasFacade.getBorderObject(
+        ...CanvasFacade.getObjects(canvas)
+      );
 
       if (borderImage) {
-        canvas.remove(borderImage)
-        canvas.renderAll()
+        CanvasFacade.removeObjects(canvas, borderImage);
       }
     }
   }
 
-  //partie sauvegarde
   function handleSave(): void {
+    if (previewCanvas) {
+      let refObject = CanvasFacade.getBorderObject(
+        ...CanvasFacade.getObjects(previewCanvas)
+      );
 
-    const backgroundImage = canvas2?.getObjects().find(element => (element as any).customType === CustomObjectType.BACKGROUND_IMAGE)
+      if (!refObject) {
+        refObject = CanvasFacade.getBackgroundObject(
+          ...CanvasFacade.getObjects(previewCanvas)
+        );
+      }
 
-    if (canvas2 && backgroundImage?.clipPath) {
-      const base64Url = canvas2.toDataURL({
-        format: 'png',
-        left: exportImageLeftPosition,
-        top: exportImageTopPosition,
-        width: exportImageWidth,
-        height: exportImageHeight
-      })
-      fetch(base64Url)
-        .then(res => res.blob())
-        .then(blob => {
-          const finalResult = new File([blob], exportImageName, { type: "image/png" })
-
+      if (
+        refObject &&
+        refObject.width &&
+        refObject.height &&
+        refObject.scaleX &&
+        refObject.scaleY
+      ) {
+        CanvasFacade.exportToFile(previewCanvas, exportImageName, "image/png", {
+          format: "png",
+          left: refObject.left,
+          top: refObject.top,
+          width: refObject.width * refObject.scaleX,
+          height: refObject.height * refObject.scaleY,
+        }).then((file) => {
           frameApiService.sendMessage({
             type: FrameMessageType.REQUEST,
-            data: { entityType: EntityType.MEDIA, type: RequestMessageType.ADD, data: { file: finalResult } } as AddRequestMessage<{
+            data: {
+              entityType: EntityType.MEDIA,
+              type: RequestMessageType.ADD,
+              data: { file },
+            } as AddRequestMessage<{
               file: File;
             }>,
           });
-        })
-    } else {
-      alert("addClipPath for save file")
+        });
+      } else {
+        alert("addClipPath for save file");
+      }
     }
   }
+
+  //#endregion
 
   return (
     <>
       <div className="navbar flex flex-wrap gap-3 justify-content-between align-content-center mb-1 p-2 ">
-        {/* <Dropdown value={selectedClipping} onChange={(e) => setSelectedClipping(e.value)} options={clippings} optionLabel="name"
-          placeholder="clipping options" className="w-full md:w-14rem dropdown" appendTo={"self"} />
-        <Dropdown value={selectedRemoveItem} onChange={(e) => setSelectedRemoveItem(e.value)} options={deleteItem} optionLabel="name"
-          placeholder="delete item" className="w-full md:w-14rem dropdown" appendTo={"self"} /> */}
-        <div>
-          <button className="p-button p-button-text p-button-plain" onClick={handleAddFile}>
-            <i className="pi pi-plus pr-2"></i>Add file from mediathèque
+        <div className="flex gap-3">
+          <Menu model={addFiles} popup ref={addMenu} />
+          <button
+            className="p-button p-button-text p-button-plain"
+            onClick={(e: any) => addMenu.current.toggle(e)}
+          >
+            Add<i className="pi pi-angle-down pl-2"></i>
           </button>
-          <button className="p-button p-button-text p-button-plain" onClick={cleanArea}>
-            <i className="pi pi-eraser pr-2"></i>Clean area
+          <Menu model={clippings} popup ref={clippingMenu} />
+          <button
+            className="p-button p-button-text p-button-plain"
+            onClick={(e: any) => clippingMenu.current.toggle(e)}
+          >
+            Clip<i className="pi pi-angle-down pl-2"></i>
           </button>
-          {!menuItem ? (
-            <button className="p-button p-button-text p-button-plain" onClick={() => {
-              setMenuItem(true),
-                setMenuClipping(false)
-            }}>
-              <i className="pi pi-eraser pr-2"></i>Delete item
-            </button>
-          ) : (
-            <button className="p-button p-button-text p-button-plain" onClick={() => { setMenuItem(false) }}>
-              Close item menu
-            </button>)
-          }
-          {!menuClipping ? (
-            <button className="p-button p-button-text p-button-plain" onClick={() => { setMenuClipping(true), setMenuItem(false) }}>
-              <i className="pi pi-plus pr-2"></i>clipping options
-            </button>
-          ) : (<>
-            <button className="p-button p-button-text p-button-plain" onClick={() => { setMenuClipping(false) }}>
-              Close clipping options
-            </button>
-          </>
-          )
-          }
+          <Menu model={deleteItem} popup ref={deleteMenu} />
+          <button
+            className="p-button p-button-text p-button-plain"
+            onClick={(e: any) => deleteMenu.current.toggle(e)}
+          >
+            Remove<i className="pi pi-angle-down pl-2"></i>
+          </button>
         </div>
         <div>
-          <button className="p-button" onClick={handleSave}>Save</button>
+          <button className="p-button" onClick={handleSave}>
+            Save
+          </button>
         </div>
       </div>
-      {menuItem &&
-        <>
-          <section className="menuDropdown">
-            <button className="p-button p-button-text p-button-plain" onClick={() => { deleteBackgroundImage(), setMenuItem(false) }}>
-              <i className="pi pi-trash pr-2"></i>Delete background
-            </button>
-            <button className="p-button p-button-text p-button-plain" onClick={() => { deleteBorder(), setMenuItem(false) }}>
-              <i className="pi pi-trash pr-2"></i>Delete border
-            </button>
-          </section>
-        </>
-      }
-      {
-        menuClipping &&
-        <>
-          <section className="menuDropdown">
-            <button className="p-button p-button-text p-button-plain" onClick={() => { AddCircleClip(), setMenuClipping(false) }}>
-              <i className="pi pi-plus pr-2"></i>circle clipping
-            </button>
-            <button className="p-button p-button-text p-button-plain" onClick={() => { AddRecClip(), setMenuClipping(false) }}>
-              <i className="pi pi-plus pr-2"></i>Rec clipping
-            </button>
-            <button className="p-button p-button-text p-button-plain" onClick={() => { deleteClip(), setMenuClipping(false) }}>
-              <i className="pi pi-trash pr-2"></i>Remove clip
-            </button>
-          </section>
-        </>
-      }
-      <FileUploader handleChange={handleChangeBgcImg} name="file" types={fileTypes} />
-      <FileUploader handleChange={handleChangeBorder} name="file" types={fileTypes} />
-      <div className={"canvas-container flex gap-3 justify-content-center mt-6"} id="canvasContainer ">
+      <div
+        className={"canvas-container flex gap-3 justify-content-center mt-6"}
+        id="canvasContainer "
+      >
         <div className="text-center editor">
           <h3>Editor</h3>
           <canvas id="canvas" />
         </div>
         <div className="text-center preview">
           <h3>Preview</h3>
-          <canvas id="canvas2" />
+          <canvas id="previewCanvas" />
         </div>
       </div>
     </>
