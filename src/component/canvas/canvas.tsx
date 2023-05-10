@@ -285,21 +285,21 @@ export const Canvas = () => {
           <Menu model={addFiles} popup ref={addMenu} />
           <button
             className="p-button p-button-text p-button-plain"
-            onClick={(e: any) => addMenu.current.toggle(e)}
+            onClick={(e: any) => (addMenu?.current as any)?.toggle(e)}
           >
             Add<i className="pi pi-angle-down pl-2"></i>
           </button>
           <Menu model={clippings} popup ref={clippingMenu} />
           <button
             className="p-button p-button-text p-button-plain"
-            onClick={(e: any) => clippingMenu.current.toggle(e)}
+            onClick={(e: any) => (clippingMenu?.current as any)?.toggle(e)}
           >
             Clip<i className="pi pi-angle-down pl-2"></i>
           </button>
           <Menu model={deleteItem} popup ref={deleteMenu} />
           <button
             className="p-button p-button-text p-button-plain"
-            onClick={(e: any) => deleteMenu.current.toggle(e)}
+            onClick={(e: any) => (deleteMenu?.current as any)?.toggle(e)}
           >
             Remove<i className="pi pi-angle-down pl-2"></i>
           </button>

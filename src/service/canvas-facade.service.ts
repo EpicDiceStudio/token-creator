@@ -324,7 +324,7 @@ export namespace CanvasFacade {
     canvas: fabric.Canvas,
     clipObject: fabric.Object
   ): void {
-    if (canvas) Services.Canvas.removeBackgroundImageClip(canvas);
+    if (canvas) removeBackgroundImageClip(canvas);
 
     clipObject.lockMovementX = true;
     clipObject.lockMovementY = true;
