@@ -227,6 +227,7 @@ export namespace CanvasFacade {
         backgroundImage.clipPath = undefined;
       }
 
+      canvas.discardActiveObject();
       canvas.renderAll();
     }
   }
@@ -350,5 +351,12 @@ export namespace CanvasFacade {
     if (backgroundImage) {
       backgroundImage.clipPath = clipObject;
     }
+
+    canvas.setActiveObject(clipObject);
+    canvas.on("selection:cleared", () => {
+      if (backgroundImage?.clipPath) {
+        canvas.setActiveObject(clipObject).renderAll();
+      }
+    });
   }
 }

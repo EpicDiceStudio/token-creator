@@ -82,7 +82,13 @@ export const Canvas = () => {
           );
       },
     },
-    { label: "Remove", command: () => {} },
+    {
+      label: "Remove",
+      command: () => {
+        if (previewCanvas)
+          CanvasFacade.removeBackgroundImageClip(previewCanvas);
+      },
+    },
   ];
 
   const deleteItem = [
@@ -164,7 +170,7 @@ export const Canvas = () => {
     message: FrameMessage<any>,
     canvas: fabric.Canvas | null
   ): void {
-    const url = message?.data?.url;
+    const url = message?.data?.data?.url;
     if (url && canvas) {
       if (addingBackground) {
         setAddingBackground(false);

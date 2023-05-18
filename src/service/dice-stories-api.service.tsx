@@ -5,6 +5,7 @@ import {
   FrameMessage,
   FrameMessageType,
   LoadRequestMessage,
+  ModalType,
   RequestMessageType,
 } from "@epic-dice-studio/dice-stories-plug-ins-api";
 import frameApiService from "./frame-api.service";
@@ -63,7 +64,10 @@ export namespace DiceStoriesApi {
     if (request.data?.data) {
       frameApiService.sendMessage({
         type: FrameMessageType.CLOSE,
-        data: request.data.data,
+        data: {
+          type: ModalType.SELECT_MEDIA,
+          data: request.data.data,
+        },
       });
     }
   }
