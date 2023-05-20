@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@epic-dice-studio/dice-stories-plug-ins-api": "^0.0.3",
+    "@epic-dice-studio/dice-stories-plug-ins-api": "^0.0.4",
     "@vitejs/plugin-react": "^4.0.0",
     "fabric": "^5.3.0",
     "primereact": "^9.3.1",

@@ -21,6 +21,7 @@ export const Canvas = () => {
   const [previewCanvas, setPreviewCanvas] = useState<fabric.Canvas | null>(
     null
   );
+  const [displayContent, setDisplayContent] = useState<boolean>(false);
   const [addingBackground, setAddingBackground] = useState<boolean>(false);
   const [addingBorder, setAddingBorder] = useState<boolean>(false);
   const [message, setMessage] = useState<any>(null);
@@ -152,6 +153,13 @@ export const Canvas = () => {
   useEffect(() => {
     if (message) {
       switch (message.type) {
+        case FrameMessageType.CONTEXT:
+          if (message.data?.styles?.length) {
+            frameApiService.addStyles(message.data.styles).finally(() => {
+              setDisplayContent(true);
+            });
+          }
+          break;
         case FrameMessageType.CLOSE:
           handleSelectMedium(message, canvas);
           break;
@@ -286,36 +294,40 @@ export const Canvas = () => {
 
   return (
     <>
-      <div className="navbar flex flex-wrap gap-3 justify-content-between align-content-center mb-1 p-2 ">
-        <div className="flex gap-3">
-          <Menu model={addFiles} popup ref={addMenu} />
-          <button
-            className="p-button p-button-text p-button-plain"
-            onClick={(e: any) => (addMenu?.current as any)?.toggle(e)}
-          >
-            Add<i className="pi pi-angle-down pl-2"></i>
-          </button>
-          <Menu model={clippings} popup ref={clippingMenu} />
-          <button
-            className="p-button p-button-text p-button-plain"
-            onClick={(e: any) => (clippingMenu?.current as any)?.toggle(e)}
-          >
-            Clip<i className="pi pi-angle-down pl-2"></i>
-          </button>
-          <Menu model={deleteItem} popup ref={deleteMenu} />
-          <button
-            className="p-button p-button-text p-button-plain"
-            onClick={(e: any) => (deleteMenu?.current as any)?.toggle(e)}
-          >
-            Remove<i className="pi pi-angle-down pl-2"></i>
-          </button>
-        </div>
+      {displayContent && (
         <div>
-          <button className="p-button" onClick={handleSave}>
-            Save
-          </button>
+          <div className="navbar flex flex-wrap gap-3 justify-content-between align-content-center mb-1 p-2 ">
+            <div className="flex gap-3">
+              <Menu model={addFiles} popup ref={addMenu} />
+              <button
+                className="p-button p-button-text p-button-plain"
+                onClick={(e: any) => (addMenu?.current as any)?.toggle(e)}
+              >
+                Add<i className="pi pi-angle-down pl-2"></i>
+              </button>
+              <Menu model={clippings} popup ref={clippingMenu} />
+              <button
+                className="p-button p-button-text p-button-plain"
+                onClick={(e: any) => (clippingMenu?.current as any)?.toggle(e)}
+              >
+                Clip<i className="pi pi-angle-down pl-2"></i>
+              </button>
+              <Menu model={deleteItem} popup ref={deleteMenu} />
+              <button
+                className="p-button p-button-text p-button-plain"
+                onClick={(e: any) => (deleteMenu?.current as any)?.toggle(e)}
+              >
+                Remove<i className="pi pi-angle-down pl-2"></i>
+              </button>
+            </div>
+            <div>
+              <button className="p-button" onClick={handleSave}>
+                Save
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
       <div
         className={"canvas-container flex gap-3 justify-content-center mt-6"}
         id="canvasContainer "
